@@ -25,7 +25,7 @@ class DeleteCell extends React.Component<IDeleteCellProps, IDeleteCellState> {
   public render() {
     return (
       <div>
-        {controlButton('', IconNames.TRASH, this.handleOpenDialog)}
+        {controlButton('', IconNames.DELETE, this.handleOpenDialog)}
         <Dialog
           icon="info-sign"
           isOpen={this.state.dialogOpen}
@@ -38,7 +38,7 @@ class DeleteCell extends React.Component<IDeleteCellProps, IDeleteCellState> {
           </div>
           <div className={Classes.DIALOG_FOOTER}>
             <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-              {controlButton('Confirm Delete', IconNames.TRASH, this.handleDelete)}
+              {controlButton('Confirm Delete', IconNames.TICK, this.handleDelete)}
               {controlButton('Cancel', IconNames.CROSS, this.handleCloseDialog)}
             </div>
           </div>
