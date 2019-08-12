@@ -299,11 +299,26 @@ const exportLibrary = (library: Library) => {
   return deployment;
 };
 
+interface ITask {
+  WEBSUMMARY: string[];
+  TEXT: string[];
+  $: IXmlParseStrOverview;
+  READING: string[];
+  PROBLEMS: IProblems[];
+  DEPLOYMENT: any;
+  GRADERDEPLOYMENT: any;
+}
+
+interface IProblems {
+  PROBLEM: IProblem[];
+}
+
+type IProblem = IXmlParseStrPProblem | IXmlParseStrCProblem;
+
 export const assessmentToXml = (
   assessment: IAssessment,
   overview: IAssessmentOverview
 ): IXmlParseStrTask => {
-  const task: any = {};
   const rawOverview: IXmlParseStrOverview = {
     coverimage: overview.coverImage,
     duedate: overview.closeAt,
@@ -313,109 +328,112 @@ export const assessmentToXml = (
     story: overview.story,
     title: overview.title
   };
-  task.$ = rawOverview;
+  const task: ITask = {
+    PROBLEMS: [{ PROBLEM: assessment.questions.map(makeQuestion) }],
+    $: rawOverview,
+    WEBSUMMARY: [overview.shortSummary],
+    TEXT: [assessment.longSummary],
+    DEPLOYMENT: exportLibrary(assessment.globalDeployment!),
+    GRADERDEPLOYMENT: assessment.graderDeployment!.chapter !== -1 ? 
+      exportLibrary(assessment.graderDeployment!)
+      : [],
+    READING: overview.reading ? [overview.reading] : [],
+  };
 
-  if (overview.reading && overview.reading !== '') {
-    task.READING = overview.reading;
-  }
+  function makeCodingQuestion(question: IProgrammingQuestion): IXmlParseStrPProblem {
 
-  task.WEBSUMMARY = overview.shortSummary;
-  task.TEXT = assessment.longSummary;
-  task.PROBLEMS = { PROBLEM: [] };
+    // tslint:disable-next-line: no-shadowed-variable
+    function makeSnippet(question: IProgrammingQuestion) {
+      const TESTCASES: {
+        PUBLIC?: IXmlParseStrTestcase[];
+        PRIVATE?: IXmlParseStrTestcase[];
+      } = {};
+      if (question.testcases.length || question.testcasesPrivate!.length) {
+        if (question.testcases.length) {
+          TESTCASES.PUBLIC = question.testcases.map(testcase => {
+            return {
+              $: {
+                answer: testcase.answer,
+                score: String(testcase.score),
+              },
+              _: testcase.program
+            };
+          });
+        }
+  
+        if (question.testcasesPrivate && question.testcasesPrivate.length) {
+          TESTCASES.PRIVATE = question.testcasesPrivate.map(testcase => {
+            return {
+              $: {
+                answer: testcase.answer,
+                score: String(testcase.score),
+              },
+              _: testcase.program
+            };
+          });
+        }
+      }
 
-  task.DEPLOYMENT = exportLibrary(assessment.globalDeployment!);
+      return {
+        SOLUTION: [question.answer || ''],
+        TEMPLATE: [question.solutionTemplate],
+        PREPEND: question.prepend,
+        POSTPEND: question.postpend,
+        GRADER: question.graderTemplate ? [question.graderTemplate] : [],
+        TESTCASES: [TESTCASES],
+      };
+    }
 
-  if (assessment.graderDeployment!.chapter !== -1) {
-    task.GRADERDEPLOYMENT = exportLibrary(assessment.graderDeployment!);
-  }
-
-  assessment.questions.forEach((question: IProgrammingQuestion | IMCQQuestion) => {
-    const problem = {
+    const problem: IXmlParseStrPProblem = {
       $: {
         type: question.type,
-        maxgrade: question.maxGrade
+        maxgrade: String(question.maxGrade),
+        maxxp: String(question.maxXp || 0),
       },
-      SNIPPET: {
-        SOLUTION: question.answer
-      },
-      TEXT: question.content,
-      CHOICE: [] as any[]
+      SNIPPET: [makeSnippet(question)],
+      TEXT: [question.content]
     };
 
+    // TODO: check if this needs fixing.
     if (question.library.chapter !== -1) {
-      /* tslint:disable:no-string-literal */
-      problem.$['DEPLOYMENT'] = exportLibrary(question.library);
+      problem.$['DEPLOYMENT'] = question.library.chapter;
     }
 
     if (question.graderLibrary!.chapter !== -1) {
-      /* tslint:disable:no-string-literal */
-      problem.$['GRADERDEPLOYMENT'] = exportLibrary(question.graderLibrary!);
+      problem.$['GRADERDEPLOYMENT'] = question.graderLibrary!.chapter;
     }
 
-    if (question.maxXp) {
-      /* tslint:disable:no-string-literal */
-      problem.$['maxxp'] = question.maxXp;
-    }
+    return problem;
+  }
 
+  function makeMCQQuestion(question: IMCQQuestion): IXmlParseStrCProblem {
+    const problem: IXmlParseStrCProblem = {
+      $: {
+        type: question.type,
+        maxgrade: String(question.maxGrade),
+        maxxp: String(question.maxXp || 0),
+      },
+      SNIPPET: { 
+        SOLUTION: [String(question.solution)],
+      },
+      TEXT: [question.content],
+      CHOICE: question.choices.map( (choice: MCQChoice, i: number) => ({
+        $: {
+          correct: question.solution === i ? 'true' : 'false'
+        },
+        TEXT: [choice.content],
+      })),
+    };
+    return problem;
+  }
+  
+  function makeQuestion(question: IProgrammingQuestion | IMCQQuestion): IProblem {
     if (question.type === 'programming') {
-      if (question.graderTemplate) {
-        /* tslint:disable:no-string-literal */
-        problem.SNIPPET['GRADER'] = question.graderTemplate;
-      }
-      const snippet = {
-        ...problem.SNIPPET,
-        TEMPLATE: question.solutionTemplate,
-        PREPEND: question.prepend,
-        POSTPEND: question.postpend,
-        TESTCASES: '' as any
-      };
-
-      if (question.testcases.length || question.testcasesPrivate!.length) {
-        /* tslint:disable:no-string-literal */
-        snippet.TESTCASES = {};
-        if (question.testcases.length) {
-          const publicTests = question.testcases.map(testcase => {
-            return {
-              $: {
-                answer: testcase.answer,
-                score: testcase.score
-              },
-              _: testcase.program
-            };
-          });
-          snippet.TESTCASES['PUBLIC'] = publicTests;
-        }
-
-        if (question.testcasesPrivate && question.testcasesPrivate.length) {
-          const privateTests = question.testcasesPrivate.map(testcase => {
-            return {
-              $: {
-                answer: testcase.answer,
-                score: testcase.score
-              },
-              _: testcase.program
-            };
-          });
-          snippet.TESTCASES['PRIVATE'] = privateTests;
-        }
-      }
-
-      problem.SNIPPET = snippet;
+      return makeCodingQuestion(question);
+    } else {
+      return makeMCQQuestion(question);
     }
+  }
 
-    if (question.type === 'mcq') {
-      question.choices.forEach((choice: MCQChoice, i: number) => {
-        problem.CHOICE.push({
-          $: {
-            correct: question.solution === i ? 'true' : 'false'
-          },
-          TEXT: choice.content
-        });
-      });
-    }
-
-    task.PROBLEMS.PROBLEM.push(problem);
-  });
-
-  return task;
+  return task; // This is how borked i think the system is.
 };
