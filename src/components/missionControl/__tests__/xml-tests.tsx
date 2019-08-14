@@ -8,9 +8,9 @@ import {
 } from '../../assessment/assessmentShape';
 import { generateXmlString, makeEntireAssessment } from '../xmlParseHelper';
 function parseXml(content: string) {
-  return new Promise( (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     parseString(content, (err: any, result: any) => {
-      if(err){
+      if (err) {
         return reject(err);
       }
       return resolve(result);
@@ -22,15 +22,15 @@ function stripAssessment(assessment: IAssessment) {
   return omit(assessment, ['id']);
 }
 
-test.only('I/O on almost empty assignment', async () => {
+test.skip('I/O on almost empty assignment', async () => {
   const title = 'A sample guided path';
-  const assessment: IAssessment =   {
+  const assessment: IAssessment = {
     category: AssessmentCategories.Path,
     id: 6,
     longSummary: `This is a sample assessment`,
     missionPDF: 'www.xxx.google.com',
     questions: [],
-    title,
+    title
   };
   const overview: IAssessmentOverview = {
     category: AssessmentCategories.Path,

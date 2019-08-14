@@ -336,9 +336,9 @@ export const assessmentToXml = (
     $: rawOverview,
     WEBSUMMARY: [overview.shortSummary],
     TEXT: [assessment.longSummary],
-    DEPLOYMENT: assessment.globalDeployment 
+    DEPLOYMENT: assessment.globalDeployment
       ? exportLibrary(assessment.globalDeployment)
-      : { $: { interpreter: 4} },
+      : { $: { interpreter: 4 } },
     GRADERDEPLOYMENT:
       assessment.graderDeployment && assessment.graderDeployment.chapter !== -1
         ? exportLibrary(assessment.graderDeployment!)
