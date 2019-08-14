@@ -334,14 +334,14 @@ export const assessmentToXml = (
     WEBSUMMARY: [overview.shortSummary],
     TEXT: [assessment.longSummary],
     DEPLOYMENT: exportLibrary(assessment.globalDeployment!),
-    GRADERDEPLOYMENT: assessment.graderDeployment!.chapter !== -1 ? 
-      exportLibrary(assessment.graderDeployment!)
-      : [],
-    READING: overview.reading ? [overview.reading] : [],
+    GRADERDEPLOYMENT:
+      assessment.graderDeployment!.chapter !== -1
+        ? exportLibrary(assessment.graderDeployment!)
+        : [],
+    READING: overview.reading ? [overview.reading] : []
   };
 
   function makeCodingQuestion(question: IProgrammingQuestion): IXmlParseStrPProblem {
-
     // tslint:disable-next-line: no-shadowed-variable
     function makeSnippet(question: IProgrammingQuestion) {
       const TESTCASES: {
@@ -354,19 +354,19 @@ export const assessmentToXml = (
             return {
               $: {
                 answer: testcase.answer,
-                score: String(testcase.score),
+                score: String(testcase.score)
               },
               _: testcase.program
             };
           });
         }
-  
+
         if (question.testcasesPrivate && question.testcasesPrivate.length) {
           TESTCASES.PRIVATE = question.testcasesPrivate.map(testcase => {
             return {
               $: {
                 answer: testcase.answer,
-                score: String(testcase.score),
+                score: String(testcase.score)
               },
               _: testcase.program
             };
@@ -380,7 +380,7 @@ export const assessmentToXml = (
         PREPEND: question.prepend,
         POSTPEND: question.postpend,
         GRADER: question.graderTemplate ? [question.graderTemplate] : [],
-        TESTCASES: [TESTCASES],
+        TESTCASES: [TESTCASES]
       };
     }
 
@@ -388,7 +388,7 @@ export const assessmentToXml = (
       $: {
         type: question.type,
         maxgrade: String(question.maxGrade),
-        maxxp: String(question.maxXp || 0),
+        maxxp: String(question.maxXp || 0)
       },
       SNIPPET: [makeSnippet(question)],
       TEXT: [question.content]
@@ -411,22 +411,22 @@ export const assessmentToXml = (
       $: {
         type: question.type,
         maxgrade: String(question.maxGrade),
-        maxxp: String(question.maxXp || 0),
+        maxxp: String(question.maxXp || 0)
       },
-      SNIPPET: { 
-        SOLUTION: [String(question.solution)],
+      SNIPPET: {
+        SOLUTION: [String(question.solution)]
       },
       TEXT: [question.content],
-      CHOICE: question.choices.map( (choice: MCQChoice, i: number) => ({
+      CHOICE: question.choices.map((choice: MCQChoice, i: number) => ({
         $: {
           correct: question.solution === i ? 'true' : 'false'
         },
-        TEXT: [choice.content],
-      })),
+        TEXT: [choice.content]
+      }))
     };
     return problem;
   }
-  
+
   function makeQuestion(question: IProgrammingQuestion | IMCQQuestion): IProblem {
     if (question.type === 'programming') {
       return makeCodingQuestion(question);
