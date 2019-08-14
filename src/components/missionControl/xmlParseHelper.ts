@@ -101,7 +101,7 @@ const makeAssessment = (result: any): [IAssessment, number, number] => {
       globalDeployment: makeLibrary(task.DEPLOYMENT),
       graderDeployment: makeLibrary(task.GRADERDEPLOYMENT),
       longSummary: task.TEXT[0],
-      missionPDF: 'google.com',
+      missionPDF: task.READING ? task.READING[0] : '',
       questions: questionArr[0],
       title: rawOverview.title
     },
@@ -149,7 +149,7 @@ const makeQuestions = (task: IXmlParseStrTask): [IQuestion[], number, number] =>
   let maxGrade = 0;
   let maxXp = 0;
   const questions: Array<IProgrammingQuestion | IMCQQuestion> = [];
-  task.PROBLEMS[0].PROBLEM.forEach((problem: IXmlParseStrProblem, curId: number) => {
+  (task.PROBLEMS[0].PROBLEM || []).forEach((problem: IXmlParseStrProblem, curId: number) => {
     const localMaxXp = problem.$.maxxp ? parseInt(problem.$.maxxp, 10) : 0;
     const question: IQuestion = {
       answer: null,
@@ -235,6 +235,20 @@ const makeTestcase = (testcase: IXmlParseStrTestcase): ITestcase => {
   };
 };
 
+export const generateXmlString = (assessment: IAssessment, overview: IAssessmentOverview) => {
+  const builder = new Builder();
+  const xmlTask: IXmlParseStrTask = assessmentToXml(assessment, overview);
+  const xml = {
+    CONTENT: {
+      $: {
+        'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance'
+      },
+      TASK: xmlTask
+    }
+  };
+  return builder.buildObject(xml).replace(/(&#xD;)+/g, '');
+};
+
 export const exportXml = () => {
   const assessmentStr = localStorage.getItem('MissionEditingAssessmentSA');
   const overviewStr = localStorage.getItem('MissionEditingOverviewSA');
@@ -242,18 +256,7 @@ export const exportXml = () => {
     const assessment: IAssessment = JSON.parse(assessmentStr);
     const overview: IAssessmentOverview = JSON.parse(overviewStr);
     const filename = overview.fileName || overview.title;
-    const builder = new Builder();
-    const xmlTask: IXmlParseStrTask = assessmentToXml(assessment, overview);
-    const xml = {
-      CONTENT: {
-        $: {
-          'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance'
-        },
-        TASK: xmlTask
-      }
-    };
-    let xmlStr = builder.buildObject(xml);
-    xmlStr = xmlStr.replace(/(&#xD;)+/g, '');
+    const xmlStr = generateXmlString(assessment, overview);
     download(filename + '.xml', xmlStr);
   }
 };
@@ -333,9 +336,11 @@ export const assessmentToXml = (
     $: rawOverview,
     WEBSUMMARY: [overview.shortSummary],
     TEXT: [assessment.longSummary],
-    DEPLOYMENT: exportLibrary(assessment.globalDeployment!),
+    DEPLOYMENT: assessment.globalDeployment 
+      ? exportLibrary(assessment.globalDeployment)
+      : { $: { interpreter: 4} },
     GRADERDEPLOYMENT:
-      assessment.graderDeployment!.chapter !== -1
+      assessment.graderDeployment && assessment.graderDeployment.chapter !== -1
         ? exportLibrary(assessment.graderDeployment!)
         : [],
     READING: overview.reading ? [overview.reading] : []
@@ -399,8 +404,8 @@ export const assessmentToXml = (
       problem.$['DEPLOYMENT'] = question.library.chapter;
     }
 
-    if (question.graderLibrary!.chapter !== -1) {
-      problem.$['GRADERDEPLOYMENT'] = question.graderLibrary!.chapter;
+    if (question.graderLibrary && question.graderLibrary.chapter !== -1) {
+      problem.$['GRADERDEPLOYMENT'] = question.graderLibrary.chapter;
     }
 
     return problem;
@@ -435,5 +440,5 @@ export const assessmentToXml = (
     }
   }
 
-  return task; // This is how borked i think the system is.
+  return task;
 };
